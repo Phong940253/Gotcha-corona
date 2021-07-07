@@ -1,33 +1,22 @@
-#!/usr/bin/env python
+if __name__ == '__main__':
+    import base64
+    import cv2 as cv
+    from test import FasterRCNN
+    import numpy as np
+    import os
+    import torch
+    torch.multiprocessing.freeze_support()
 
-# WS server example
+    model = FasterRCNN()
+    PATH_TEST = "./Corona/train/"
 
-# import asyncio
-# import websockets
+    listImage = []
 
+    # test image as base 64
+    for i in range(1000):
+        train_filename = np.random.choice(os.listdir(PATH_TEST))
+        data = open(PATH_TEST + train_filename, "rb").read()
+        encoded = base64.b64encode(data)
+        listImage.append(encoded)
 
-# async def hello(websocket, path):
-#     name = await websocket.recv()
-#     print(f"< {name}")
-
-#     greeting = f"Hello {name}!"
-
-#     await websocket.send(greeting)
-#     print(f"> {greeting}")
-
-# start_server = websockets.serve(hello, "localhost", 80)
-
-# asyncio.get_event_loop().run_until_complete(start_server)
-# asyncio.get_event_loop().run_forever()
-
-import cv2 as cv
-from test import FasterRCNN
-import numpy as np
-
-model = FasterRCNN()
-
-img = cv.imread("./Corona/train/10.jpg", cv.IMREAD_COLOR)
-img = cv.cvtColor(img, cv.COLOR_BGR2RGB).astype(np.float32)
-img /= 255.0
-
-model.eval(img, visuable=True)
+    model.eval(listImage, visuable=False, save=False)
