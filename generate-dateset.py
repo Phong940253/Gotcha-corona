@@ -8,6 +8,7 @@ import cv2 as cv
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import random
+import pandas as pd
 
 
 def imgAug(img):
@@ -88,9 +89,32 @@ def drawBoundingBox(img, info):
     return img
 
 
-dict = os.listdir("./Corona/background/")
+mapLabel = {
+    "type1": 0,
+    "type2": 1,
+    "type3": 2,
+    "queen": 3,
+    "patient": 4,
+    "doctor": 5
+}
 
-for i in range(0, 50):
+data = ["image_id", "width", "height", "bbox", "labels", "bg"]
+
+
+def addLabelToFile(df, info, filename, size, bg_name):
+    for i in info:
+        bbox = list(i[0])
+        d = {"image_id": filename,
+             "width": size[0], "height": size[1], "bbox": [bbox], "labels": mapLabel[i[1][:-4]], "bg": [bg_name]}
+        df2 = pd.DataFrame(data=d)
+        df = df.append(df2)
+    return df
+
+
+dict = os.listdir("./Corona/background/")
+df = pd.DataFrame(columns=data)
+
+for ind in range(0, 10):
     background_filename = np.random.choice(os.listdir("./Corona/background/"))
     background = cv.imread('./Corona/background/' + background_filename)
     # filename = './Corona/background/' + val
@@ -107,9 +131,14 @@ for i in range(0, 50):
         info.append((rect, corona_filename))
         # cv.imshow('res', background)
         # cv.waitKey()
+
+    cv.imwrite('./Corona/train/' + str(ind) + '.jpg', background)
     background = drawBoundingBox(background, info)
-    cv.imshow('res', background)
-    cv.waitKey(0)
+    cv.imwrite('./Corona/labled/' + str(ind) + '.jpg', background)
+    df = addLabelToFile(
+        df, info, ind, background.shape[:2], background_filename)
+    # cv.imshow('res', background)
+    # cv.waitKey(0)
     # cv.destroyAllWindows()
     # mask_new = getForegroundMask(corona_rgb)
     # corona_rgb[corona_rgb >= 1] = 0
@@ -117,8 +146,8 @@ for i in range(0, 50):
     # plt.axis('off')
     # plt.imshow(mask_new)
     # plt.show()
-
-
+print(df.head())
+df.to_csv('./Corona/train.csv', index=False)
 # nums = []
 # for i in range(1000):
 #     temp = random.gauss(15, 5)
