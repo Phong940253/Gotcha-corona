@@ -195,7 +195,7 @@ class FasterRCNN:
             listImage, get_valid_transform())
         valid_data_loader = DataLoader(
             valid_dataset,
-            batch_size=2,
+            batch_size=3,
             shuffle=False,
             num_workers=1,
             collate_fn=collate_fn,
