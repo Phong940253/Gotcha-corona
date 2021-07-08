@@ -20,8 +20,9 @@ def rotate_image(image, angle):
 
 
 def imgAug(img):
-    sizeRandom = random.uniform(0.2, 0.8)
-    res = cv.resize(img, None, fx=sizeRandom, fy=sizeRandom)
+    sizeRandom = random.uniform(0.3, 0.55)
+    res = cv.resize(img, None, fx=sizeRandom, fy=sizeRandom,
+                    interpolation=cv.INTER_AREA)
     chance = random.randint(0, 100)
     if chance <= 20:
         angle = random.randint(1, 359)
@@ -126,16 +127,17 @@ def addLabelToFile(df, info, filename, size, bg_name):
 dict = os.listdir("./Corona/background/")
 # df = pd.DataFrame(columns=data)
 
-for ind in range(0, 1000):
+for ind in range(0, 100):
     background_filename = np.random.choice(os.listdir("./Corona/background/"))
     background = cv.imread('./Corona/background/' + background_filename)
+    background = cv.resize(background, (512, 512), cv.INTER_AREA)
     # filename = './Corona/background/' + val
     print(background_filename)
     info = []
     mu = 8
     sigma = 4
-    for i in range(0, int(random.gauss(mu, sigma))):
-        corona_filename = np.random.choice(os.listdir("./Corona/coronav2/"))
+    for i in range(0, 6):
+        corona_filename = np.random.choice(os.listdir("./Corona/coronav3/"))
         corona = cv.imread('./Corona/coronav2/' + corona_filename)
         corona_aug = imgAug(corona)
         background, rect = compose(
@@ -144,10 +146,8 @@ for ind in range(0, 1000):
         # cv.imshow('res', background)
         # cv.waitKey()
     h, w = background.shape[: 2]
-    backgroundDraw = drawBoundingBox(background, info)
-    background = cv.resize(background, (512, 512), cv.INTER_AREA)
-    backgroundDraw = cv.resize(backgroundDraw, (512, 512), cv.INTER_AREA)
     cv.imwrite('./Corona/train/images/' + str(ind) + '.jpg', background)
+    backgroundDraw = drawBoundingBox(background, info)
     cv.imwrite('./Corona/labled/' + str(ind) + '.jpg', backgroundDraw)
 
     if len(info) > 0:
