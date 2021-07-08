@@ -11,9 +11,21 @@ import random
 import pandas as pd
 
 
+def rotate_image(image, angle):
+    image_center = tuple(np.array(image.shape[1::-1]) / 2)
+    rot_mat = cv.getRotationMatrix2D(image_center, angle, 1.0)
+    result = cv.warpAffine(
+        image, rot_mat, image.shape[1::-1], flags=cv.INTER_LINEAR)
+    return result
+
+
 def imgAug(img):
     sizeRandom = random.uniform(0.2, 0.8)
     res = cv.resize(img, None, fx=sizeRandom, fy=sizeRandom)
+    chance = random.randint(0, 100)
+    if chance <= 20:
+        angle = random.randint(1, 359)
+        res = rotate_image(res, angle)
     return res
 
 
@@ -91,11 +103,11 @@ def drawBoundingBox(img, info):
 
 mapLabel = {
     "type1": 0,
-    "type2": 1,
-    "type3": 2,
-    "queen": 3,
-    "patient": 4,
-    "doctor": 5
+    "type2": 0,
+    "type3": 0,
+    "queen": 0,
+    "patient": 1,
+    "doctor": 1
 }
 
 data = ["image_id", "width", "height", "bbox", "labels", "bg"]
@@ -112,31 +124,47 @@ def addLabelToFile(df, info, filename, size, bg_name):
 
 
 dict = os.listdir("./Corona/background/")
-df = pd.DataFrame(columns=data)
+# df = pd.DataFrame(columns=data)
 
-for ind in range(0, 10):
+for ind in range(0, 1000):
     background_filename = np.random.choice(os.listdir("./Corona/background/"))
     background = cv.imread('./Corona/background/' + background_filename)
     # filename = './Corona/background/' + val
     print(background_filename)
     info = []
-    mu = 10
-    sigma = 5
+    mu = 8
+    sigma = 4
     for i in range(0, int(random.gauss(mu, sigma))):
-        corona_filename = np.random.choice(os.listdir("./Corona/corona/"))
-        corona = cv.imread('./Corona/corona/' + corona_filename)
+        corona_filename = np.random.choice(os.listdir("./Corona/coronav2/"))
+        corona = cv.imread('./Corona/coronav2/' + corona_filename)
         corona_aug = imgAug(corona)
         background, rect = compose(
             corona=corona_aug, background=background, info=info)
         info.append((rect, corona_filename))
         # cv.imshow('res', background)
         # cv.waitKey()
+    h, w = background.shape[: 2]
+    backgroundDraw = drawBoundingBox(background, info)
+    background = cv.resize(background, (512, 512), cv.INTER_AREA)
+    backgroundDraw = cv.resize(backgroundDraw, (512, 512), cv.INTER_AREA)
+    cv.imwrite('./Corona/train/images/' + str(ind) + '.jpg', background)
+    cv.imwrite('./Corona/labled/' + str(ind) + '.jpg', backgroundDraw)
 
-    cv.imwrite('./Corona/train/' + str(ind) + '.jpg', background)
-    background = drawBoundingBox(background, info)
-    cv.imwrite('./Corona/labled/' + str(ind) + '.jpg', background)
-    df = addLabelToFile(
-        df, info, ind, background.shape[:2], background_filename)
+    if len(info) > 0:
+        with open('./Corona/train/labels/' + str(ind) + '.txt', 'w') as f:
+            for i in info:
+                rect, type = i
+                min_x, max_x, min_y, max_y = rect
+                x = (min_x + max_x) / 2 / w
+                y = (min_y + max_y) / 2 / h
+                width, height = (max_x - min_x) / \
+                    w, (max_y - min_y) / h
+                x, y, width, height = round(x, 6),  round(
+                    y, 6),  round(width, 6), round(height, 6)
+                f.writelines(str(mapLabel[type[:-4]]) + " " + str(x) + " " +
+                             str(y) + " " + str(width) + " " + str(height) + "\n")
+    # df = addLabelToFile(
+    #     df, info, ind, background.shape[:2], background_filename)
     # cv.imshow('res', background)
     # cv.waitKey(0)
     # cv.destroyAllWindows()
@@ -146,8 +174,8 @@ for ind in range(0, 10):
     # plt.axis('off')
     # plt.imshow(mask_new)
     # plt.show()
-print(df.head())
-df.to_csv('./Corona/train.csv', index=False)
+# print(df.head())
+# df.to_csv('./Corona/train.csv', index=False)
 # nums = []
 # for i in range(1000):
 #     temp = random.gauss(15, 5)

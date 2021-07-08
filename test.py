@@ -193,14 +193,20 @@ class FasterRCNN:
         start = time.time()
         valid_dataset = PiplineEval(
             listImage, get_valid_transform())
+
+        batch_size = 3
         valid_data_loader = DataLoader(
             valid_dataset,
-            batch_size=3,
+            batch_size=batch_size,
             shuffle=False,
             num_workers=1,
             collate_fn=collate_fn,
             pin_memory=True
         )
+
+        boxess = []
+        labelss = []
+        scoress = []
 
         for ind, images in enumerate(tqdm(valid_data_loader)):
             images = list(img.to(self.device) for img in images)
@@ -211,35 +217,40 @@ class FasterRCNN:
                 outputs = [{k: v.to(self.cpu_device) for k, v in t.items()}
                            for t in outputs]
 
-                if save:
-                    boxes = outputs[0]['boxes'].detach(
+                for indo, valo in enumerate(outputs):
+                    boxes = valo['boxes'].detach(
                     ).numpy().astype(np.int32)
-                    labels = outputs[0]['labels'].detach(
+                    labels = valo['labels'].detach(
                     ).numpy().astype(np.int32)
-                    scores = outputs[0]['scores'].detach(
+                    scores = valo['scores'].detach(
                     ).numpy().astype(np.float32)
-                    sample = images[0].permute(1, 2, 0).cpu().numpy()
-                    sample *= 255  # or any coefficient
-                    sample = sample.astype(np.uint8)
-                    for indb, valb in enumerate(boxes):
-                        if labels[indb] == 1:
-                            color = (220, 0, 0)
-                        else:
-                            color = (0, 220, 0)
+                    boxess.append(boxes)
+                    labelss.append(labels)
+                    scoress.append(scores)
+                    if save:
+                        sample = images[indo].permute(1, 2, 0).cpu().numpy()
+                        sample *= 255  # or any coefficient
+                        sample = sample.astype(np.uint8)
+                        for indb, valb in enumerate(boxes):
+                            if scores[indb] > 0.35:
+                                if labels[indb] == 1:
+                                    color = (220, 0, 0)
+                                else:
+                                    color = (0, 220, 0)
 
-                        type = list(self.mapLabel.keys())[
-                            list(self.mapLabel.values()).index(labels[indb])]
-                        cv2.rectangle(sample,
-                                      (valb[0], valb[1]),
-                                      (valb[2], valb[3]),
-                                      color, 3)
-                        cv2.putText(
-                            sample, type, (valb[0], valb[1] - 5), 0, 0.3, color)
-                        cv2.putText(sample, str(
-                            scores[indb]), (valb[2] - 20, valb[3] + 10), 0, 0.3, color)
-                    sample = cv2.cvtColor(sample, cv2.COLOR_RGB2BGR)
-                    cv2.imwrite(PATH_SAVE + "/" +
-                                str(ind) + ".jpg", sample)
+                                type = list(self.mapLabel.keys())[
+                                    list(self.mapLabel.values()).index(labels[indb])]
+                                cv2.rectangle(sample,
+                                              (valb[0], valb[1]),
+                                              (valb[2], valb[3]),
+                                              color, 3)
+                                cv2.putText(
+                                    sample, type, (valb[0], valb[1] - 5), 0, 0.3, color)
+                                cv2.putText(sample, str(
+                                    scores[indb]), (valb[2] - 20, valb[3] + 10), 0, 0.3, color)
+                        sample = cv2.cvtColor(sample, cv2.COLOR_RGB2BGR)
+                        cv2.imwrite(PATH_SAVE + "/" +
+                                    str(ind * batch_size + indo) + ".jpg", sample)
 
         end = time.time()
         print(f"Runtime of the program is {end - start}")
@@ -271,3 +282,4 @@ class FasterRCNN:
             ax.set_axis_off()
             ax.imshow(sample)
             plt.show()
+        return boxess, labelss, scoress
