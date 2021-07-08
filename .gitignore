@@ -3,3 +3,4 @@
 /node_modules
 .jpg
 /venv
+/Corona/fasterrcnn_resnet50_fpn.pth
